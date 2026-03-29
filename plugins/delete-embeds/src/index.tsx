@@ -8,7 +8,6 @@ import { findInReactTree } from "@vendetta/utils"
 
 let patches = [];
 
-
 const LazyActionSheet = findByProps("openLazy", "hideActionSheet");
 const { FormRow, FormIcon } = Forms;
 const {getCurrentUser} = findByProps("getCurrentUser")
@@ -23,11 +22,11 @@ function onLoad() {
         component.then(instance => {
             const unpatch = after("default", instance, (_, component) => {
                 React.useEffect(() => () => { unpatch() }, [])
-                const buttons = findInReactTree(component, x => x?.[0]?.type?.name === "ButtonRow")
+                const buttons = findInReactTree(component, c => c?.some?.(child => child?.type?.name === "ButtonRow" || child?.type?.name === "ActionSheetRow"))
                 if (!buttons) return
 
                 const channel = getChannel(message.channel_id)
-                if (message.embeds.length == 0 || (getCurrentUser().id !== message.author.id && !Permissions.can(constants.Permissions.MANAGE_MESSAGES, channel))) {
+                if (message.embeds.length === 0 || (getCurrentUser().id !== message.author.id && !Permissions.can(constants.Permissions.MANAGE_MESSAGES, channel))) {
                     //unpatch()
                     return
                 }
@@ -36,7 +35,7 @@ function onLoad() {
 
                 buttons.push(
                 <FormRow
-                    label={label || "Delete Embed"}
+                    label={label || "Suppress Embed"}
                     leading={<FormIcon style={{ opacity: 1 }} source={getAssetId("ic_close_16px")} />}
                     onPress={() => {
                         suppressEmbeds(message.channel_id, message.id)
