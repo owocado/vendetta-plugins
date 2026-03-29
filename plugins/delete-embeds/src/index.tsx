@@ -1,45 +1,42 @@
 import { findByProps } from "@vendetta/metro";
 import { i18n, constants } from "@vendetta/metro/common";
 import { after, before} from "@vendetta/patcher";
-import { Forms } from "@vendetta/ui/components";
 import { React } from "@vendetta/metro/common";
 import { getAssetIDByName as getAssetId } from "@vendetta/ui/assets"
 import { findInReactTree } from "@vendetta/utils"
 
 let patches = [];
 
-const LazyActionSheet = findByProps("openLazy", "hideActionSheet");
-const { FormRow, FormIcon } = Forms;
+const ActionSheet = findByProps("openLazy", "hideActionSheet");
+const { ActionSheetRow } = findByProps("ActionSheetRow");
 const {getCurrentUser} = findByProps("getCurrentUser")
 const {suppressEmbeds} = findByProps("suppressEmbeds");
 const Permissions = findByProps("getChannelPermissions", "can");
 const {getChannel} = findByProps("getChannel");
 
 function onLoad() {
-    patches.push(before("openLazy", LazyActionSheet, ([component, key, msg]) => {
+    patches.push(before("openLazy", ActionSheet, ([component, key, msg]) => {
         const message = msg?.message;
         if (key != "MessageLongPressActionSheet" || !message) return;
         component.then(instance => {
             const unpatch = after("default", instance, (_, component) => {
                 React.useEffect(() => () => { unpatch() }, [])
                 const buttons = findInReactTree(component, c => c?.some?.(child => child?.type?.name === "ButtonRow" || child?.type?.name === "ActionSheetRow"))
-                if (!buttons) return
+                if (!buttons) return;
 
                 const channel = getChannel(message.channel_id)
-                if (message.embeds.length === 0 || (getCurrentUser().id !== message.author.id && !Permissions.can(constants.Permissions.MANAGE_MESSAGES, channel))) {
-                    //unpatch()
-                    return
-                }
+                const canManageMessages = Permissions.can(constants.Permissions.MANAGE_MESSAGES, channel);
+                if (message.embeds.length === 0 || (getCurrentUser().id !== message.author.id && !canManageMessages)) return;
 
                 const label = i18n?.Messages?.WEBHOOK_DELETE_TITLE?.intlMessage?.format({name:"Embed"})
 
                 buttons.push(
-                <FormRow
+                <ActionSheetRow
                     label={label || "Suppress Embed"}
-                    leading={<FormIcon style={{ opacity: 1 }} source={getAssetId("ic_close_16px")} />}
+                    icon={<ActionSheetRow.Icon source={getAssetId("ic_close_16px")} />}
                     onPress={() => {
                         suppressEmbeds(message.channel_id, message.id)
-                        LazyActionSheet.hideActionSheet()
+                        ActionSheet.hideActionSheet()
                     }}
                 />)
             })
