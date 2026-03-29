@@ -14,9 +14,11 @@ jobs:
             - run: python3 .github/fix_readme.py
 
             - name: Push
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               run: |
                 git config --local user.email "actions@github.com"
                 git config --local user.name "GitHub Actions"
                 git add .
                 git commit -m "chore(docs): Update README.md" || exit 0   # do not error if nothing to commit
-                git push
+                git push https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git HEAD:${{ github.ref_name }}
