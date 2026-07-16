@@ -17,13 +17,5 @@
 		"vendetta-types": "latest",
 		"chalk": "^5.0.1",
 		"ws": "^8.6.0"
-	},
-	"pnpm": {
-		"peerDependencyRules": {
-			"ignoreMissing": [
-				"react",
-				"react-native"
-			]
-		}
 	}
 }
