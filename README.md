@@ -6,6 +6,9 @@ https://`YOUR_GITHUB_USERNAME`.github.io/`REPO_NAME`/`PLUGIN_NAME`
 
 ## Plugins
 <!-- plugins -->
+- ValidUser: 
+    > Fixes unresolved user mentions like @unknown-user to a normal clickable mention.
+    - Install link: `https://c10udburst-discord.github.io/vendetta-plugins/valid-user`
 - Hidden channels: 
     > View the name and description of channels you can't access
     - Install link: `https://c10udburst-discord.github.io/vendetta-plugins/hidden-channels`
