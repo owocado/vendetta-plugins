@@ -56,16 +56,16 @@ function extractAllMentionIds(message: any): string[] {
 
     if (message.embeds && Array.isArray(message.embeds)) {
         for (const embed of message.embeds) {
-            if (embed.title) {
-                ids.push(...extractIdsFromText(embed.title));
+            if (embed.rawTitle) {
+                ids.push(...extractIdsFromText(embed.rawTitle));
             }
-            if (embed.description) {
-                ids.push(...extractIdsFromText(embed.description));
+            if (embed.rawDescription) {
+                ids.push(...extractIdsFromText(embed.rawDescription));
             }
             if (embed.fields && Array.isArray(embed.fields)) {
                 for (const field of embed.fields) {
-                    if (field.name) ids.push(...extractIdsFromText(field.name));
-                    if (field.value) ids.push(...extractIdsFromText(field.value));
+                    if (field.rawName) ids.push(...extractIdsFromText(field.rawName));
+                    if (field.rawValue) ids.push(...extractIdsFromText(field.rawValue));
                 }
             }
         }
