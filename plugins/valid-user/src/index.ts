@@ -148,37 +148,34 @@ function toRawEmbed(embed: any): any {
     return raw;
 }
 
-async function forceUIRefresh(channelId: string, message: any) {
-    const freshContent = message.content ? message.content + " " : " ";
-    const components = message.components;
-    const embeds = message.embeds;
+async function forceUIRefresh(channelId: string, msg: any) {
+    const freshContent = msg.content ? msg.content + "\u200b " : " ";
+    const components = msg.components;
+    const embeds = msg.embeds;
     const hasComponents = Array.isArray(components) && components.length > 0;
-    const comps = hasComponents ? cloneComponents(components) : components;
 
     // Dispatch slight variance update while preserving original embeds array
     Dispatcher.dispatch({
         type: "MESSAGE_UPDATE",
         message: {
-            id: message.id,
+            id: msg.id,
             channel_id: channelId,
             content: freshContent,
-            embeds: embeds,
-            components: comps,
-            flags: message.flags
+            embeds: embeds
         }
     });
-    await sleep(100);
+    await sleep(800);
 
     // Dispatch original layout state to settle the visual cache
     Dispatcher.dispatch({
         type: "MESSAGE_UPDATE",
         message: {
-            id: message.id,
+            id: msg.id,
             channel_id: channelId,
-            content: message.content,
+            content: msg.content,
             embeds: Array.isArray(embeds) ? embeds.map(toRawEmbed) : embeds,
-            components: comps,
-            flags: message.flags
+            components: hasComponents ? cloneComponents(components) : components,
+            flags: msg.flags
         }
     });
 }
@@ -192,7 +189,8 @@ async function fetchUsersViaGateway(userIds: string[]): Promise<boolean> {
 
     try {
         ws.send(8, {
-            guild_id: currentGuildId,
+            guild_id: [currentGuildId],
+            limit: 100,
             user_ids: userIds,
             presences: true
         });
@@ -219,7 +217,7 @@ async function fetchUser(userId: string) {
 
 async function fixUnknownMentions(message: any) {
     const ids = extractAllMentionIds(message);
-    const channelId = message.channel_id;
+    const channelId = message.channelId;
     const messageId = message.id;
 
     if (ids.length === 0) return;
@@ -246,7 +244,7 @@ async function fixUnknownMentions(message: any) {
     }
 
     if (!success) {
-        const safetyDelay = uncachedIds.length > 10 ? 450 : 250;
+        const safetyDelay = uncachedIds.length > 10 ? 900 : 250;
 
         for (let i = 0; i < uncachedIds.length; i++) {
             const userId = uncachedIds[i];
