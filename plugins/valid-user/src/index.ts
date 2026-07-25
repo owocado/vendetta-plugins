@@ -148,11 +148,18 @@ function toRawEmbed(embed: any): any {
     return raw;
 }
 
+const IS_COMPONENTS_V2 = 1 << 15;
+
+function hasComponentsV2Flag(flags: number | undefined): boolean {
+    return typeof flags === "number" && (flags & IS_COMPONENTS_V2) === IS_COMPONENTS_V2;
+}
+
 async function forceUIRefresh(channelId: string, msg: any) {
     const freshContent = msg.content ? msg.content + "\u200b " : " ";
     const components = msg.components;
     const embeds = msg.embeds;
     const hasComponents = Array.isArray(components) && components.length > 0;
+    const isCV2 = hasComponentsV2Flag(msg.flags);
 
     const Dispatcher = findByProps("dispatch", "subscribe");
     // Dispatch slight variance update while preserving original embeds array
@@ -165,20 +172,32 @@ async function forceUIRefresh(channelId: string, msg: any) {
             embeds: embeds
         }
     });
-    await sleep(800);
+    await sleep(50);
 
     // Dispatch original layout state to settle the visual cache
-    Dispatcher.dispatch({
-        type: "MESSAGE_UPDATE",
-        message: {
-            id: msg.id,
-            channel_id: channelId,
-            content: msg.content,
-            embeds: Array.isArray(embeds) ? embeds.map(toRawEmbed) : embeds,
-            components: hasComponents ? cloneComponents(components) : components,
-            flags: msg.flags
-        }
-    });
+    if (isCV2) {
+        Dispatcher.dispatch({
+            type: "MESSAGE_UPDATE",
+            message: {
+                id: msg.id,
+                channel_id: channelId,
+                components: hasComponents ? cloneComponents(components) : components,
+                flags: msg.flags
+            }
+        });
+    } else {
+        Dispatcher.dispatch({
+            type: "MESSAGE_UPDATE",
+            message: {
+                id: msg.id,
+                channel_id: channelId,
+                content: msg.content,
+                attachments: msg.attachments,
+                embeds: Array.isArray(embeds) && embeds.length > 0 ? embeds.map(toRawEmbed) : embeds,
+                components: components
+            }
+        });
+    }
 }
 
 async function fetchUsersViaGateway(userIds: string[]): Promise<boolean> {
