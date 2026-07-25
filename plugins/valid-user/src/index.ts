@@ -114,12 +114,27 @@ function toRawEmbed(embed: any): any {
         timestamp: embed.timestamp,
         title: embed.rawTitle ?? (typeof embed.title === "string" ? embed.title : undefined),
         description: embed.rawDescription ?? (typeof embed.description === "string" ? embed.description : undefined),
-        author: embed.author,
-        image: embed.image,
-        thumbnail: embed.thumbnail,
+        author: embed.author ? {
+            name: embed.author.name,
+            url: embed.author.url,
+            icon_url: embed.author.iconURL,
+            proxy_icon_url: embed.author.iconProxyURL
+        } : undefined,
+        image: embed.image ? {
+            url: embed.image.url,
+            proxy_url: embed.image.proxyURL,
+            width: embed.image.width,
+            height: embed.image.height,
+        } : undefined,
+        thumbnail: embed.thumbnail ? {
+            url: embed.thumbnail.url,
+            proxy_url: embed.thumbnail.proxyURL,
+            width: embed.thumbnail.width,
+            height: embed.thumbnail.height,
+        } : undefined,
         video: embed.video,
         provider: embed.provider,
-        footer: embed.footer,
+        footer: embed.footer ? { icon_url: embed.footer.iconURL, ...embed.footer } : undefined,
     };
 
     if (Array.isArray(embed.fields)) {
