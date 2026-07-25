@@ -79,7 +79,7 @@ function extractAllMentionIds(message: any): string[] {
 }
 
 function isUserCached(userId: string): boolean {
-    const user = UserStore?.getUser?.(userId);
+    const user = findByProps("getUser", "getCurrentUser")?.getUser?.(userId);
     return !!user;
 }
 
@@ -154,6 +154,7 @@ async function forceUIRefresh(channelId: string, msg: any) {
     const embeds = msg.embeds;
     const hasComponents = Array.isArray(components) && components.length > 0;
 
+    const Dispatcher = findByProps("dispatch", "subscribe");
     // Dispatch slight variance update while preserving original embeds array
     Dispatcher.dispatch({
         type: "MESSAGE_UPDATE",
@@ -181,9 +182,11 @@ async function forceUIRefresh(channelId: string, msg: any) {
 }
 
 async function fetchUsersViaGateway(userIds: string[]): Promise<boolean> {
+    const SelectedGuildStore = findByProps("getGuildId", "getChannelId");
     const currentGuildId = SelectedGuildStore?.getGuildId?.();
     if (!currentGuildId) return false;
 
+    const GatewayConnection = findByProps("getGateway", "send");
     const ws = GatewayConnection?.getGateway?.();
     if (!ws) return false;
 
@@ -217,7 +220,7 @@ async function fetchUser(userId: string) {
 
 async function fixUnknownMentions(message: any) {
     const ids = extractAllMentionIds(message);
-    const channelId = message.channelId;
+    const channelId = message.channelId || message.channel_id;
     const messageId = message.id;
 
     if (ids.length === 0) return;
@@ -239,6 +242,7 @@ async function fixUnknownMentions(message: any) {
     const BULK_THRESHOLD = 5;
     let success = false;
 
+    const SelectedGuildStore = findByProps("getGuildId", "getChannelId");
     if (uncachedIds.length > BULK_THRESHOLD && SelectedGuildStore?.getGuildId?.()) {
         success = await fetchUsersViaGateway(uncachedIds);
     }
