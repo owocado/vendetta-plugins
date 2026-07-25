@@ -179,7 +179,7 @@ function toRawEmbed(embed: any): any {
         provider: embed.provider,
         footer: embed.footer ? {
             icon_url: embed.footer.iconURL,
-            proxy_icon_url: embed.footer.iconProxyURL
+            proxy_icon_url: embed.footer.iconProxyURL,
             ...embed.footer
         } : undefined,
     };
