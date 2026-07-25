@@ -172,7 +172,7 @@ async function forceUIRefresh(channelId: string, msg: any) {
             embeds: embeds
         }
     });
-    await sleep(50);
+    await sleep(1110);
 
     // Dispatch original layout state to settle the visual cache
     if (isCV2) {
