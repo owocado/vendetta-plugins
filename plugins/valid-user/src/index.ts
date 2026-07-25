@@ -290,7 +290,7 @@ export default {
                     }
 
                     const fixButton = React.createElement(ActionSheetRow, {
-                        label: ids.length === 1 ? "Fix Unknown Mention" : `Fix ${ids.length} Unknown Mentions`,
+                        label: ids.length === 1 ? "Fix 1 @Mention" : `Fix ${ids.length} @Mentions`,
                         icon: React.createElement(ActionSheetRow.Icon, {
                             source: MentionIcon,
                         }),
