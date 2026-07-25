@@ -104,10 +104,41 @@ function cloneComponents(components: any[]): any[] {
     return clone;
 }
 
+function toRawEmbed(embed: any): any {
+    if (!embed) return embed;
+
+    const raw: any = {
+        type: embed.type,
+        url: embed.url,
+        color: embed.color,
+        timestamp: embed.timestamp,
+        title: embed.rawTitle ?? (typeof embed.title === "string" ? embed.title : undefined),
+        description: embed.rawDescription ?? (typeof embed.description === "string" ? embed.description : undefined),
+        author: embed.author,
+        image: embed.image,
+        thumbnail: embed.thumbnail,
+        video: embed.video,
+        provider: embed.provider,
+        footer: embed.footer,
+    };
+
+    if (Array.isArray(embed.fields)) {
+        raw.fields = embed.fields.map((field: any) => ({
+            name: field.rawName ?? (typeof field.name === "string" ? field.name : ""),
+            value: field.rawValue ?? (typeof field.value === "string" ? field.value : ""),
+            inline: field.inline,
+        }));
+    }
+
+    return raw;
+}
+
 async function forceUIRefresh(channelId: string, message: any) {
     const freshContent = message.content ? message.content + " " : " ";
-    const hasComponents = Array.isArray(message.components) && message.components.length > 0;
-    const comps = hasComponents ? cloneComponents(message.components) : message.components;
+    const components = message.components;
+    const embeds = message.embeds;
+    const hasComponents = Array.isArray(components) && components.length > 0;
+    const comps = hasComponents ? cloneComponents(components) : components;
 
     // Dispatch slight variance update while preserving original embeds array
     Dispatcher.dispatch({
@@ -116,13 +147,12 @@ async function forceUIRefresh(channelId: string, message: any) {
             id: message.id,
             channel_id: channelId,
             content: freshContent,
-            embeds: message.embeds,
+            embeds: embeds,
             components: comps,
             flags: message.flags
         }
     });
-
-    await sleep(500);
+    await sleep(100);
 
     // Dispatch original layout state to settle the visual cache
     Dispatcher.dispatch({
@@ -131,7 +161,7 @@ async function forceUIRefresh(channelId: string, message: any) {
             id: message.id,
             channel_id: channelId,
             content: message.content,
-            embeds: message.embeds,
+            embeds: Array.isArray(embeds) ? embeds.map(toRawEmbed) : embeds,
             components: comps,
             flags: message.flags
         }
