@@ -7,13 +7,13 @@ import { findInReactTree } from "@vendetta/utils"
 
 let patches = [];
 
-const ActionSheet = findByProps("openLazy", "hideActionSheet");
 const { ActionSheetRow } = findByProps("ActionSheetRow");
 const { getCurrentUser } = findByProps("getCurrentUser")
 const { suppressEmbeds } = findByProps("suppressEmbeds");
-const Permissions = findByProps("getChannelPermissions", "can");
 const { getChannel } = findByProps("getChannel");
-const RestAPI = findByProps("patch", "get");
+const ActionSheet = findByProps("openLazy", "hideActionSheet");
+const Permissions = findByProps("getChannelPermissions", "can");
+const RestAPI = findByProps("get", "post", "del", "patch");
 
 const EMBED_SUPPRESSED = 1 << 2;
 
@@ -39,7 +39,7 @@ function onLoad() {
                 <ActionSheetRow
                     label="Suppress Embeds"
                     variant="danger"
-                    icon={<ActionSheetRow.Icon source={getAssetId("ic_close_16px")} />}
+                    icon={<ActionSheetRow.Icon source={getAssetId("ic_hide_24px")} />}
                     onPress={() => {
                         suppressEmbeds(message.channel_id, message.id)
                         ActionSheet.hideActionSheet()
@@ -52,7 +52,7 @@ function onLoad() {
                     buttons.push(
                     <ActionSheetRow
                         label="Unsuppress Embeds"
-                        icon={<ActionSheetRow.Icon source={getAssetId("ic_image_24px")} />}
+                        icon={<ActionSheetRow.Icon source={getAssetId("ic_show_password")} />}
                         onPress={() => {
                             RestAPI.patch({
                                 url: `/channels/${channel.id}/messages/${message.id}`,
