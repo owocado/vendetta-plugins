@@ -8,11 +8,11 @@ import { getAssetIDByName } from "@vendetta/ui/assets";
 const ActionSheet = findByProps("openLazy", "hideActionSheet");
 const { ActionSheetRow } = findByProps("ActionSheetRow");
 
-const UserStore = findByProps("getUser", "getCurrentUser");
 const Dispatcher = findByProps("dispatch", "subscribe");
 const RestAPI = findByProps("get", "post", "del", "patch");
 const GatewayConnection = findByProps("getGateway", "send");
 const SelectedGuildStore = findByProps("getGuildId", "getChannelId");
+const { getUser } = findByProps("getUser", "getCurrentUser");
 
 const MentionIcon = getAssetIDByName("ic_mention_24px") ??
     getAssetIDByName("MentionIcon") ??
@@ -24,7 +24,7 @@ const MENTION_REGEX = /<@!?(\d{17,19})>/g;
 
 function extractIdsFromText(text: string): string[] {
     if (!text) return [];
-    return [...text.matchAll(MENTION_REGEX)].map(x => x[1]);
+    return [...text.matchAll(MENTION_REGEX)].map(x => x[1]).filter(id => !isUserCached(id));
 }
 
 function extractIdsFromComponents(components: any[]): string[] {
@@ -79,8 +79,7 @@ function extractAllMentionIds(message: any): string[] {
 }
 
 function isUserCached(userId: string): boolean {
-    const user = findByProps("getUser", "getCurrentUser")?.getUser?.(userId);
-    return !!user;
+    return !!getUser(userId);
 }
 
 function cloneComponents(components: any[]): any[] {
