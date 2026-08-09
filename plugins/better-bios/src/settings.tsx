@@ -28,7 +28,7 @@ export default function Settings() {
                 onValueChange={v => storage.dismiss = v}
                 note=""
             />
-            <FormSwitchRow
+            <Forms.FormSwitchRow
                 label="Trim Excessive Newlines"
                 subLabel="Shorten long runs of blank lines in bios"
                 value={storage.trimNewlines ?? true}
