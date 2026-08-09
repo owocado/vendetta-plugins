@@ -14,7 +14,7 @@
 
 import { findByNameAll, findByProps } from "@vendetta/metro";
 import { url as URLOpener } from "@vendetta/metro/common";
-import { after } from "@vendetta/patcher";
+import { after, before } from "@vendetta/patcher";
 import { storage } from "@vendetta/plugin";
 
 const ActionShitter = findByProps("hideActionSheet");
