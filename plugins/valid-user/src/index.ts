@@ -1,7 +1,7 @@
 import { findByProps } from "@vendetta/metro";
 import { before, after } from "@vendetta/patcher";
 import { logger } from "@vendetta";
-import { React } from "@vendetta/metro/common";
+import { React, messageUtil } from "@vendetta/metro/common";
 import { findInReactTree } from "@vendetta/utils";
 import { getAssetIDByName } from "@vendetta/ui/assets";
 import { showToast } from "@vendetta/ui/toasts";
@@ -194,6 +194,31 @@ function normalizeEmbedColor(color: string | number | null | undefined): number 
     return 1974050;
 }
 
+function fillMedia(m: any) {
+    if (m && typeof m.url === "string") {
+        m.proxyUrl ??= m.url;
+        m.loadingState ??= 2; // loaded?
+    }
+}
+
+function buildComponents(src: any[], mark: boolean): any[] {
+    const clone = JSON.parse(JSON.stringify(src ?? []));
+    let marked = !mark;
+    const walk = (nodes: any[]) => {
+        for (const n of nodes) {
+            if (!n) continue;
+            fillMedia(n.media);
+            fillMedia(n.file);
+            n.items?.forEach((i: any) => fillMedia(i?.media));
+            if (!marked && typeof n.content === "string") { n.content += "\u200b"; marked = true; }
+            if (Array.isArray(n.components)) walk(n.components);
+            if (n.accessory) walk([n.accessory]);
+        }
+    };
+    walk(clone);
+    return clone;
+}
+
 function toRawEmbed(embed: any): any {
     if (!embed) return embed;
 
@@ -256,42 +281,24 @@ async function forceUIRefresh(channelId: string, msg: any) {
     const isCV2 = hasComponentsV2Flag(msg.flags);
 
     const Dispatcher = getDispatcher();
-    // Dispatch slight variance update while preserving original embeds array
-    Dispatcher.dispatch({
-        type: "MESSAGE_UPDATE",
-        message: {
-            id: msg.id,
-            channel_id: channelId,
-            content: freshContent,
-            embeds: embeds
-        }
-    });
-    await sleep(1110);
-
-    // Dispatch original layout state to settle the visual cache
-    if (isCV2) {
-        Dispatcher.dispatch({
+    const base = { id: msg.id, channel_id: channelId };
+    if (hasComponentsV2Flag(msg.flags)) {
+        const send = (mark: boolean) => Dispatcher.dispatch({
             type: "MESSAGE_UPDATE",
-            message: {
-                id: msg.id,
-                channel_id: channelId,
-                components: hasComponents ? cloneComponents(components) : components,
-                flags: msg.flags
-            }
+            message: { ...base, flags: msg.flags, components: buildComponents(msg.components, mark) },
         });
-    } else {
-        Dispatcher.dispatch({
-            type: "MESSAGE_UPDATE",
-            message: {
-                id: msg.id,
-                channel_id: channelId,
-                content: msg.content,
-                attachments: msg.attachments,
-                embeds: Array.isArray(embeds) && embeds.length > 0 ? embeds.map(toRawEmbed) : embeds,
-                components: components
-            }
-        });
+        send(true);
+        await sleep(1110);
+        send(false);
+        return;
     }
+
+    const embeds = Array.isArray(msg.embeds) ? msg.embeds.map(toRawEmbed) : msg.embeds;
+    Dispatcher.dispatch({ type: "MESSAGE_UPDATE",
+        message: { ...base, content: msg.content ? msg.content + "\u200b" : " ", embeds } });
+    await sleep(REFRESH_DELAY_MS);
+    Dispatcher.dispatch({ type: "MESSAGE_UPDATE",
+        message: { ...base, content: msg.content, embeds } });
 }
 
 async function fetchUsersViaGateway(userIds: string[]): Promise<boolean> {
@@ -343,17 +350,15 @@ async function fetchUser(userId: string) {
 
 async function fixUnknownMentions(message: any) {
     const ids = extractAllMentionIds(message);
-    const channelId = message.channelId || message.channel_id;
-    const messageId = message.id;
-
     if (ids.length === 0) return;
 
-    let uncachedIds = ids.filter(id => !isUserCached(id));
+    const channelId = message.channelId || message.channel_id;
+    const messageId = message.id;
+    if (!channelId && !messageId) return;
 
+    let uncachedIds = ids.filter(id => !isUserCached(id));
     if (uncachedIds.length === 0) {
-        if (channelId && messageId) {
-            await forceUIRefresh(channelId, message);
-        }
+        await forceUIRefresh(channelId, message);
         return;
     }
 
@@ -380,9 +385,11 @@ async function fixUnknownMentions(message: any) {
         }
     }
 
-    if (channelId && messageId) {
-        await forceUIRefresh(channelId, message);
-    }
+    await forceUIRefresh(channelId, message);
+    const joined = ids.map(x => `<@${x}>`).join(' ');
+    try {
+        messageUtil.sendBotMessage(channelId, `✅ ${joined} should be cached now.`);
+    } catch(err) { pass; }
 }
 
 let unpatchOpenLazy: (() => void) | null = null;
