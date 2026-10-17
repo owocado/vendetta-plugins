@@ -4,15 +4,25 @@ import { logger } from "@vendetta";
 import { React } from "@vendetta/metro/common";
 import { findInReactTree } from "@vendetta/utils";
 import { getAssetIDByName } from "@vendetta/ui/assets";
+import { showToast } from "@vendetta/ui/toasts";
+
+const lazy = (...props: string[]) => {
+    let mod: any;
+    return () => (mod ??= findByProps(...props));
+};
+const getUserStore = lazy("getUser", "getCurrentUser");
+const getDispatcher = lazy("dispatch", "subscribe");
+const getRestAPI = lazy("get", "post", "del", "patch");
+const getGateway = lazy("getGateway", "send");
+const getGuildStore = lazy("getGuildId", "getChannelId");
 
 const ActionSheet = findByProps("openLazy", "hideActionSheet");
-const { ActionSheetRow } = findByProps("ActionSheetRow");
+const ActionSheetRow = findByProps("ActionSheetRow")?.ActionSheetRow;
 
 const Dispatcher = findByProps("dispatch", "subscribe");
 const RestAPI = findByProps("get", "post", "del", "patch");
 const GatewayConnection = findByProps("getGateway", "send");
 const SelectedGuildStore = findByProps("getGuildId", "getChannelId");
-const { getUser } = findByProps("getUser", "getCurrentUser");
 
 const MentionIcon = getAssetIDByName("ic_mention_24px") ??
     getAssetIDByName("MentionIcon") ??
@@ -110,10 +120,17 @@ function extractAllMentionIds(message: any): string[] {
 }
 
 function isUserCached(userId: string): boolean {
-    return !!getUser(userId);
+    return !!getUserStore()?.getUser?.(userId);
 }
 
 function cloneComponents(components: any[]): any[] {
+    for (const component of components) {
+        if (!component) continue;
+        if (component.type === 9 && component.accessory?.media) {
+            component.accessory.media.proxyUrl = component.accessory.media.url;
+            component.accessory.media.loadingState = 2;
+        }
+    }
     const clone = JSON.parse(JSON.stringify(components ?? []));
 
     function hasTextNodes(nodes: any[]): boolean {
@@ -238,7 +255,7 @@ async function forceUIRefresh(channelId: string, msg: any) {
     const hasComponents = Array.isArray(components) && components.length > 0;
     const isCV2 = hasComponentsV2Flag(msg.flags);
 
-    const Dispatcher = findByProps("dispatch", "subscribe");
+    const Dispatcher = getDispatcher();
     // Dispatch slight variance update while preserving original embeds array
     Dispatcher.dispatch({
         type: "MESSAGE_UPDATE",
@@ -278,11 +295,11 @@ async function forceUIRefresh(channelId: string, msg: any) {
 }
 
 async function fetchUsersViaGateway(userIds: string[]): Promise<boolean> {
-    const SelectedGuildStore = findByProps("getGuildId", "getChannelId");
+    const SelectedGuildStore = getGuildStore();
     const currentGuildId = SelectedGuildStore?.getGuildId?.();
     if (!currentGuildId) return false;
 
-    const GatewayConnection = findByProps("getGateway", "send");
+    const GatewayConnection = getGateway();
     const ws = GatewayConnection?.getGateway?.();
     if (!ws) return false;
 
@@ -303,7 +320,17 @@ async function fetchUsersViaGateway(userIds: string[]): Promise<boolean> {
 }
 
 async function fetchUser(userId: string) {
-    const res = await RestAPI.get({ url: `/users/${userId}` });
+    const Dispatcher = getDispatcher();
+    const RestAPI = getRestAPI();
+    let res;
+    try {
+        res = await RestAPI.get({ url: `/users/${userId}` });
+    } catch (err: any) {
+        if (err?.status !== 429) throw err;
+        // error shape (status, body.retry_after in seconds) is a guess
+        await sleep(Math.ceil((err.body?.retry_after ?? 1) * 1000));
+        res = await RestAPI.get({ url: `/users/${userId}` });
+    }
     if (res.body) {
         Dispatcher.dispatch({
             type: "USER_UPDATE",
@@ -321,12 +348,7 @@ async function fixUnknownMentions(message: any) {
 
     if (ids.length === 0) return;
 
-    const uncachedIds: string[] = [];
-    for (const userId of ids) {
-        if (!isUserCached(userId)) {
-            uncachedIds.push(userId);
-        }
-    }
+    let uncachedIds = ids.filter(id => !isUserCached(id));
 
     if (uncachedIds.length === 0) {
         if (channelId && messageId) {
@@ -336,14 +358,13 @@ async function fixUnknownMentions(message: any) {
     }
 
     const BULK_THRESHOLD = 5;
-    let success = false;
-
-    const SelectedGuildStore = findByProps("getGuildId", "getChannelId");
-    if (uncachedIds.length > BULK_THRESHOLD && SelectedGuildStore?.getGuildId?.()) {
-        success = await fetchUsersViaGateway(uncachedIds);
+    if (uncachedIds.length > BULK_THRESHOLD && getGuildStore()?.getGuildId?.()) {
+        await fetchUsersViaGateway(uncachedIds);
+        // "request sent" is not "users fetched": re-check, REST-fetch the rest
+        uncachedIds = uncachedIds.filter(id => !isUserCached(id));
     }
 
-    if (!success) {
+    if (uncachedIds.length > 0) {
         const safetyDelay = uncachedIds.length > 10 ? 900 : 250;
 
         for (let i = 0; i < uncachedIds.length; i++) {
@@ -366,8 +387,30 @@ async function fixUnknownMentions(message: any) {
 
 let unpatchOpenLazy: (() => void) | null = null;
 
+const inFlight = new Set<string>();
+
+async function runFix(message: any) {
+    const key = message.id ?? "";
+    if (inFlight.has(key)) return; // ignore double presses
+    inFlight.add(key);
+    try {
+        await fixUnknownMentions(message);
+        const missing = extractAllMentionIds(message).filter(id => !isUserCached(id)).length;
+        showToast(missing ? `${missing} mention(s) still unresolved` : "Mentions refreshed");
+    } catch (err) {
+        logger.error("[ValidUser] Fix failed:", err);
+        showToast("Failed to fix mentions");
+    } finally {
+        inFlight.delete(key);
+    }
+}
+
 export default {
     onLoad() {
+        if (!ActionSheet || !ActionSheetRow) {
+            logger.error("[ValidUser] Required modules not found; plugin inactive.");
+            return;
+        }
         unpatchOpenLazy = before("openLazy", ActionSheet, ([comp, args, msg]) => {
             if (args !== "MessageLongPressActionSheet" || !msg?.message) return;
 
@@ -389,14 +432,18 @@ export default {
                         return;
                     }
 
+                    const unknown = ids.filter(id => !isUserCached(id)).length;
                     const fixButton = React.createElement(ActionSheetRow, {
-                        label: ids.length === 1 ? "Fix 1 @Mention" : `Fix ${ids.length} @Mentions`,
-                        icon: React.createElement(ActionSheetRow.Icon, {
-                            source: MentionIcon,
-                        }),
+                        key: "valid-user-fix",
+                        label: unknown === 0 ? "Refresh Mentions"
+                            : unknown === 1 ? "Fix Unknown Mention"
+                            : `Fix ${unknown} Unknown Mentions`,
+                        icon: MentionIcon != null
+                            ? React.createElement(ActionSheetRow.Icon, { source: MentionIcon })
+                            : undefined,
                         onPress: () => {
                             ActionSheet.hideActionSheet();
-                            fixUnknownMentions(message);
+                            runFix(message);
                         },
                     });
 
