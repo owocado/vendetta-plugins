@@ -296,7 +296,7 @@ async function forceUIRefresh(channelId: string, msg: any) {
     const embeds = Array.isArray(msg.embeds) ? msg.embeds.map(toRawEmbed) : msg.embeds;
     Dispatcher.dispatch({ type: "MESSAGE_UPDATE",
         message: { ...base, content: msg.content ? msg.content + "\u200b" : " ", embeds } });
-    await sleep(REFRESH_DELAY_MS);
+    await sleep(1110);
     Dispatcher.dispatch({ type: "MESSAGE_UPDATE",
         message: { ...base, content: msg.content, embeds } });
 }
