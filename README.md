@@ -6,19 +6,19 @@ https://`YOUR_GITHUB_USERNAME`.github.io/`REPO_NAME`/`PLUGIN_NAME`
 
 ## Plugins
 <!-- plugins -->
-- Create webhooks: 
-    > Create webhooks from the webhook management screen
-    - Install link: `https://c10udburst-discord.github.io/vendetta-plugins/create-webhooks`
-- BetterBios: 
-    > Makes bio text selectable and links in them clickable
-    - Install link: `https://c10udburst-discord.github.io/vendetta-plugins/better-bios`
-- Hidden channels: 
-    > View the name and description of channels you can't access
-    - Install link: `https://c10udburst-discord.github.io/vendetta-plugins/hidden-channels`
-- Delete embeds: 
-    > Adds a msg sheet option to suppress embeds.
-    - Install link: `https://c10udburst-discord.github.io/vendetta-plugins/delete-embeds`
 - ValidUser: 
     > Fixes unresolved user mentions like @unknown-user to a normal clickable mention.
     - Install link: `https://c10udburst-discord.github.io/vendetta-plugins/valid-user`
+- BetterBios: 
+    > Makes bio text selectable and links in them clickable
+    - Install link: `https://c10udburst-discord.github.io/vendetta-plugins/better-bios`
+- Delete embeds: 
+    > Adds a msg sheet option to suppress embeds.
+    - Install link: `https://c10udburst-discord.github.io/vendetta-plugins/delete-embeds`
+- Create webhooks: 
+    > Create webhooks from the webhook management screen
+    - Install link: `https://c10udburst-discord.github.io/vendetta-plugins/create-webhooks`
+- Hidden channels: 
+    > View the name and description of channels you can't access
+    - Install link: `https://c10udburst-discord.github.io/vendetta-plugins/hidden-channels`
 <!-- plugins -->
