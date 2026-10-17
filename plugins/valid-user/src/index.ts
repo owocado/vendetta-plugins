@@ -276,7 +276,6 @@ function hasComponentsV2Flag(flags: number | undefined): boolean {
 async function forceUIRefresh(channelId: string, msg: any) {
     const freshContent = msg.content ? msg.content + "\u200b " : " ";
     const components = msg.components;
-    const embeds = msg.embeds;
     const hasComponents = Array.isArray(components) && components.length > 0;
     const isCV2 = hasComponentsV2Flag(msg.flags);
 
