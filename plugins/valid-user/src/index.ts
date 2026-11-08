@@ -389,7 +389,9 @@ async function fixUnknownMentions(message: any) {
     const joined = ids.map(x => `<@${x}>`).join(' ');
     try {
         messageUtil.sendBotMessage(channelId, `✅ ${joined} should be cached now.`);
-    } catch(err) { pass; }
+    } catch(err) {
+        showToast(`botMessage: ${err instanceof Error ? err.message : String(err)}`);
+    }
 }
 
 let unpatchOpenLazy: (() => void) | null = null;
