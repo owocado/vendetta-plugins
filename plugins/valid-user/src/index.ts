@@ -362,13 +362,13 @@ async function fixUnknownMentions(message: any) {
     }
 
     const BULK_THRESHOLD = 5;
-    if (uncachedIds.length > BULK_THRESHOLD && getGuildStore()?.getGuildId?.()) {
-        await fetchUsersViaGateway(uncachedIds);
-        // "request sent" is not "users fetched": re-check, REST-fetch the rest
-        uncachedIds = uncachedIds.filter(id => !isUserCached(id));
-    }
+    let success = false;
 
-    if (uncachedIds.length > 0) {
+    const SelectedGuildStore = findByProps("getGuildId", "getChannelId");
+    if (uncachedIds.length > BULK_THRESHOLD && SelectedGuildStore?.getGuildId?.()) {
+        success = await fetchUsersViaGateway(uncachedIds);
+
+    if (!success) {
         const safetyDelay = uncachedIds.length > 10 ? 900 : 250;
 
         for (let i = 0; i < uncachedIds.length; i++) {
@@ -405,7 +405,7 @@ async function runFix(message: any) {
         showToast(missing ? `${missing} mention(s) still unresolved` : "Mentions refreshed");
     } catch (err) {
         logger.error("[ValidUser] Fix failed:", err);
-        showToast("Failed to fix mentions");
+        showToast(`Failed to fix mentions: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
         inFlight.delete(key);
     }
@@ -441,9 +441,7 @@ export default {
                     const unknown = ids.filter(id => !isUserCached(id)).length;
                     const fixButton = React.createElement(ActionSheetRow, {
                         key: "valid-user-fix",
-                        label: unknown === 0 ? "Refresh Mentions"
-                            : unknown === 1 ? "Fix Unknown Mention"
-                            : `Fix ${unknown} Unknown Mentions`,
+                        label: ids.length === 1 ? "Fix 1 @mention" : `Fix ${ids.length} @mentions`,
                         icon: MentionIcon != null
                             ? React.createElement(ActionSheetRow.Icon, { source: MentionIcon })
                             : undefined,
