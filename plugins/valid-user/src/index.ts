@@ -367,6 +367,7 @@ async function fixUnknownMentions(message: any) {
     const SelectedGuildStore = findByProps("getGuildId", "getChannelId");
     if (uncachedIds.length > BULK_THRESHOLD && SelectedGuildStore?.getGuildId?.()) {
         success = await fetchUsersViaGateway(uncachedIds);
+    }
 
     if (!success) {
         const safetyDelay = uncachedIds.length > 10 ? 900 : 250;
